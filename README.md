@@ -2,7 +2,7 @@
 
 Send an SMS from a **GL.iNet cellular router** when it boots — ideal for alerts after **power outages** or unexpected reboots.
 
-This project targets **GL.iNet / OpenWrt firmware** that includes the built-in `sendsms` utility (for example: **GL-XE3000** (**Puli AX**), **GL-X3000**, (**Spitz AX**) and other cellular models).
+This project targets **GL.iNet / OpenWrt firmware** that includes the built-in `sendsms` utility (for example: **GL-XE3000** (**Puli AX**), **GL-X3000** (**Spitz AX**) and other cellular models).
 
 ---
 
