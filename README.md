@@ -20,7 +20,7 @@ This project targets **GL.iNet / OpenWrt firmware** that includes the built-in `
 
 Replace `<YOURNUMBER>` with the phone number that should receive the SMS:
 
-Example: +13038675309
+Example including country code: +13038675309
 
 ```sh
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/techrelay/GL.iNet-CellularModels-SMSonBoot/main/install.sh)" -- <YOURNUMBER>
