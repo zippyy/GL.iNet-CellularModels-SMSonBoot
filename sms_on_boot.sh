@@ -1,7 +1,7 @@
 #!/bin/sh
 LOG="/tmp/sms_on_boot.log"
 STATE="/etc/sms_on_boot.last"
-COOLDOWN=1800   # seconds (30 min)
+COOLDOWN=300   # seconds (5 min)
 
 PHONE="+13038675309"   # <-- change if needed
 

@@ -28,4 +28,17 @@ else
 fi
 
 echo "[*] Creating init.d service..."
-cat > /etc/init.d/sms_on_boot
+cat > /etc/init.d/sms_on_boot <<'EOF'
+#!/bin/sh /etc/rc.common
+START=99
+start() {
+  /usr/bin/sms_on_boot.sh &
+}
+EOF
+
+chmod +x /etc/init.d/sms_on_boot
+/etc/init.d/sms_on_boot enable
+
+echo "[OK] Installed."
+echo "To test immediately (no reboot required):"
+echo "  rm -f /etc/sms_on_boot.last && /usr/bin/sms_on_boot.sh && cat /tmp/sms_on_boot.log"
