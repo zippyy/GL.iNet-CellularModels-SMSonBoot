@@ -1,7 +1,8 @@
 #!/bin/sh
 set -eu
 
-REPO_RAW_BASE="https://raw.githubusercontent.com/zippyy/GL.iNet-CellularModels-SMSonBoot/main"
+REPO_RAW_BASE="https://raw.githubusercontent.com/techrelay/GL.iNet-CellularModels-SMSonBoot/main"
+CONF="/etc/sms_on_boot_combined.conf"
 
 PREFER=""
 PHONE=""
@@ -87,45 +88,15 @@ echo "[*] Downloading sms_on_boot_combined.sh..."
 curl -fsSL "$REPO_RAW_BASE/sms_on_boot_combined.sh" -o /usr/bin/sms_on_boot_combined.sh
 chmod +x /usr/bin/sms_on_boot_combined.sh
 
-# Apply settings
-sed -i "s|^PHONE=\".*\"|PHONE=\"$PHONE\"|g" /usr/bin/sms_on_boot_combined.sh
-sed -i "s|^PREFER=\".*\"|PREFER=\"$PREFER\"|g" /usr/bin/sms_on_boot_combined.sh
+echo "[*] Writing config $CONF ..."
+# Write config without sed, so special characters in the key never break anything.
+umask 077
+{
+  echo "PHONE=\"$PHONE\""
+  echo "PREFER=\"$PREFER\""
+  echo "TEXTBELT_KEY=\"$TEXTBELT_KEY\""
+} > "$CONF"
 
-if [ -n "${TEXTBELT_KEY:-}" ]; then
-  sed -i "s|^TEXTBELT_KEY=\".*\"|TEXTBELT_KEY=\"$TEXTBELT_KEY\"|g" /usr/bin/sms_on_boot_combined.sh
-else
-  sed -i "s|^TEXTBELT_KEY=\".*\"|TEXTBELT_KEY=\"\"|g" /usr/bin/sms_on_boot_combined.sh
-fi
-
-# ---- Patch installed boot script to prevent hangs + add curl timeouts (idempotent) ----
-
-# 1) Ensure Textbelt curl has timeouts (safe to run multiple times)
-# Replace: curl -sS -X POST
-# With:    curl -sS --connect-timeout 5 --max-time 15 -X POST
-sed -i 's/curl -sS -X POST/curl -sS --connect-timeout 5 --max-time 15 -X POST/g' /usr/bin/sms_on_boot_combined.sh
-
-# 2) Only wait for sms daemons if sendsms exists (prevents 120s delay on non-cellular models)
-# If the script already contains this guard, nothing breaks.
-if ! grep -q 'Only wait for SMS daemons if sendsms exists' /usr/bin/sms_on_boot_combined.sh 2>/dev/null; then
-  # Replace the original wait loop (first match) with guarded version.
-  # This assumes the script contains the exact original while-loop pattern.
-  # If it doesn't match, the script still works; this just avoids unnecessary delay.
-  sed -i '0,/^i=0$/{
-s/^i=0$/# Only wait for SMS daemons if sendsms exists (prevents delay on non-cellular models)\
-if command -v sendsms >/dev\/null 2>\&1; then\
-  i=0/
-}' /usr/bin/sms_on_boot_combined.sh
-
-  sed -i '0,/^done$/{
-s/^done$/done\
-fi/
-}' /usr/bin/sms_on_boot_combined.sh
-
-  # Add marker comment so we don't try to patch again
-  sed -i '1,40{s/^LOG="\/tmp\/sms_on_boot_combined\.log"$/LOG="\/tmp\/sms_on_boot_combined.log"\n# Only wait for SMS daemons if sendsms exists/}' /usr/bin/sms_on_boot_combined.sh
-fi
-
-# Create init.d service
 echo "[*] Creating init.d service..."
 cat > /etc/init.d/sms_on_boot_combined <<'EOF'
 #!/bin/sh /etc/rc.common
