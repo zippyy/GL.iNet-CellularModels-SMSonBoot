@@ -21,7 +21,7 @@ if [ "$choice" = "2" ]; then
   PREFER="sendsms"
 fi
 
-printf "Destination phone number (E.164 like +17192291657): "
+printf "Destination phone number (With Country Code like: +17192291657): "
 read PHONE
 
 TEXTBELT_KEY=""
