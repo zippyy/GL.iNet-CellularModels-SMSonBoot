@@ -34,3 +34,8 @@ sh -c "$(curl -fsSL https://raw.githubusercontent.com/techrelay/GL.iNet-Cellular
 **TextBelt Version**
 
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/zippyy/GL.iNet-CellularModels-SMSonBoot/main/install_textbelt.sh)" -- <YOURNUMBER> <YOUR_TEXTBELT_KEY>
+
+**Combined Version**
+
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/zippyy/GL.iNet-CellularModels-SMSonBoot/main/install_combined.sh)"
+
