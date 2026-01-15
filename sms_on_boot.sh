@@ -3,7 +3,7 @@ LOG="/tmp/sms_on_boot.log"
 STATE="/etc/sms_on_boot.last"
 COOLDOWN=1800   # seconds (30 min)
 
-PHONE="+17192291657"   # <-- change if needed
+PHONE="+13038675309"   # <-- change if needed
 
 log() { echo "[$(date '+%F %T')] $*" >> "$LOG"; }
 
