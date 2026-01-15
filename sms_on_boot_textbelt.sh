@@ -1,10 +1,10 @@
 #!/bin/sh
 LOG="/tmp/sms_on_boot_textbelt.log"
 STATE="/etc/sms_on_boot_textbelt.last"
-COOLDOWN=1800   # seconds (30 min)
+COOLDOWN=300   # seconds (5 min)
 
-PHONE="+11234567890"        # <-- change if needed
-TEXTBELT_KEY="textbelt" # <-- REQUIRED (or use "textbelt" for the free key)
+PHONE="+11234567890"        # change if needed
+TEXTBELT_KEY="textbelt"     # set your key here
 
 log() { echo "[$(date '+%F %T')] $*" >> "$LOG"; }
 
@@ -45,6 +45,7 @@ if ! command -v curl >/dev/null 2>&1; then
   exit 1
 fi
 
+# Require key
 if [ -z "$TEXTBELT_KEY" ] || [ "$TEXTBELT_KEY" = "YOUR_KEY_HERE" ]; then
   log "ERROR: TEXTBELT_KEY not set."
   exit 1
@@ -65,7 +66,6 @@ WAN IP: $WAN_IP"
 
 log "Sending via Textbelt to $PHONE"
 
-# Textbelt: POST https://textbelt.com/text with phone, message, key :contentReference[oaicite:2]{index=2}
 RESP="$(curl -sS -X POST https://textbelt.com/text \
   --data-urlencode phone="$PHONE" \
   --data-urlencode message="$MSG" \
