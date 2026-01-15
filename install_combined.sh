@@ -1,124 +1,145 @@
 #!/bin/sh
-LOG="/tmp/sms_on_boot_combined.log"
-STATE="/etc/sms_on_boot_combined.last"
-COOLDOWN=300 
+set -eu
 
-PHONE="+11234567890"
-PREFER="textbelt"            # textbelt or sendsms
-TEXTBELT_KEY=""              # set to enable textbelt, or leave empty
+REPO_RAW_BASE="https://raw.githubusercontent.com/zippyy/GL.iNet-CellularModels-SMSonBoot/main"
 
-log() { echo "[$(date '+%F %T')] $*" >> "$LOG"; }
+PREFER=""
+PHONE=""
+TEXTBELT_KEY=""
 
-log "Script start"
+usage() {
+  cat <<'EOF'
+SMS on Boot - Combined Installer
 
-find_wan_iface() {
-  dev="$(ip route 2>/dev/null | awk '/^default /{for(i=1;i<=NF;i++) if($i=="dev"){print $(i+1); exit}}')"
-  if [ -n "$dev" ]; then
-    case "$dev" in
-      lo|br-lan|lan*|eth*|en*|wl*|wlan*|phy*|ap*|bat*|ifb*|docker*|veth*|tun*|wg*|tailscale* ) ;;
-      *) echo "$dev"; return 0 ;;
-    esac
-  fi
+Interactive:
+  install_combined.sh
 
-  for dev in $(ls /sys/class/net 2>/dev/null); do
-    case "$dev" in
-      wan*|ppp*|wwan*|usb*|rmnet*|mhi*|cdc*|en*|eth* )
-        ip -4 addr show dev "$dev" 2>/dev/null | grep -q "inet " && { echo "$dev"; return 0; }
-        ;;
-    esac
-  done
-  return 1
+Non-interactive:
+  install_combined.sh --prefer textbelt|sendsms --phone +17192291657 [--textbelt-key KEY]
+
+Examples:
+  install_combined.sh --prefer textbelt --phone +17192291657 --textbelt-key textbelt
+  install_combined.sh --prefer sendsms  --phone +17192291657
+EOF
 }
 
-send_textbelt() {
-  if [ -z "$TEXTBELT_KEY" ]; then
-    log "Textbelt: key not set"
-    return 1
-  fi
-  if ! command -v curl >/dev/null 2>&1; then
-    log "Textbelt: curl not found"
-    return 1
-  fi
-
-  # Never hang forever
-  RESP="$(curl -sS --connect-timeout 10 --max-time 20 -X POST https://textbelt.com/text \
-    --data-urlencode phone="$PHONE" \
-    --data-urlencode message="$MSG" \
-    -d key="$TEXTBELT_KEY" 2>>"$LOG" || true)"
-
-  echo "[$(date '+%F %T')] Textbelt response: $RESP" >> "$LOG"
-  echo "$RESP" | grep -q '"success":[[:space:]]*true'
-}
-
-send_sendsms() {
-  if ! command -v sendsms >/dev/null 2>&1; then
-    log "sendsms: sendsms not found"
-    return 1
-  fi
-  # Use international to work with E.164 +1... numbers
-  sendsms "$PHONE" "$MSG" international >/dev/null 2>&1
-}
-
-# Cooldown guard
-now="$(date +%s)"
-if [ -f "$STATE" ]; then
-  last="$(cat "$STATE" 2>/dev/null | tr -dc '0-9')"
-  if [ -n "$last" ] && [ $((now-last)) -lt "$COOLDOWN" ]; then
-    log "Cooldown active, skipping"
-    exit 0
-  fi
-fi
-
-# Wait a bit for SMS daemons (helps sendsms fallback on cellular models)
-i=0
-while [ $i -lt 60 ]; do
-  pidof sms_manager >/dev/null 2>&1 && pidof smsd >/dev/null 2>&1 && break
-  sleep 2
-  i=$((i+1))
+# Parse args (if any)
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -h|--help) usage; exit 0 ;;
+    --prefer) PREFER="${2:-}"; shift 2 ;;
+    --phone) PHONE="${2:-}"; shift 2 ;;
+    --textbelt-key) TEXTBELT_KEY="${2:-}"; shift 2 ;;
+    --) shift; break ;;
+    *) echo "Unknown arg: $1" >&2; usage; exit 1 ;;
+  esac
 done
 
-WAN_IFACE="$(find_wan_iface 2>/dev/null || true)"
-WAN_IP=""
-if [ -n "$WAN_IFACE" ]; then
-  WAN_IP="$(ip -4 addr show dev "$WAN_IFACE" 2>/dev/null | awk '/inet /{print $2}' | cut -d/ -f1 | head -n1)"
+if [ "$(id -u)" -ne 0 ]; then
+  echo "Run as root." >&2
+  exit 1
 fi
 
-MSG="GL.iNet router booted after power outage.
-Time: $(date '+%F %T %Z')"
-[ -n "$WAN_IFACE" ] && MSG="$MSG
-WAN IF: $WAN_IFACE"
-[ -n "$WAN_IP" ] && MSG="$MSG
-WAN IP: $WAN_IP"
+if ! command -v curl >/dev/null 2>&1; then
+  echo "ERROR: curl not found. Install requires curl access." >&2
+  exit 1
+fi
 
-log "Preferred provider: $PREFER"
+# If not enough args, go interactive
+if [ -z "${PREFER:-}" ] || [ -z "${PHONE:-}" ]; then
+  echo
+  echo "SMS on Boot - Combined Installer"
+  echo "--------------------------------"
+  echo "Choose which provider to try FIRST:"
+  echo "  1) Textbelt (HTTPS API; good for non-cellular models)"
+  echo "  2) sendsms  (local SIM; cellular models only)"
+  echo
+  printf "Enter 1 or 2: "
+  read choice
 
-if [ "$PREFER" = "textbelt" ]; then
-  log "Trying Textbelt first"
-  if send_textbelt; then
-    log "Sent via Textbelt"
-    echo "$now" > "$STATE"
-    exit 0
+  if [ "$choice" = "2" ]; then
+    PREFER="sendsms"
+  else
+    PREFER="textbelt"
   fi
-  log "Textbelt failed, trying sendsms"
-  if send_sendsms; then
-    log "Sent via sendsms"
-    echo "$now" > "$STATE"
-    exit 0
-  fi
+
+  printf "Destination phone number (E.164, e.g. +17192291657): "
+  read PHONE
+
+  echo "Textbelt key (optional). Leave blank to skip Textbelt."
+  echo "You can also use: textbelt (limited free tier)"
+  printf "Textbelt key: "
+  read TEXTBELT_KEY
+fi
+
+# Validate
+if [ -z "${PHONE:-}" ]; then
+  echo "ERROR: phone number is required." >&2
+  exit 1
+fi
+
+if [ "$PREFER" != "textbelt" ] && [ "$PREFER" != "sendsms" ]; then
+  echo "ERROR: --prefer must be textbelt or sendsms." >&2
+  exit 1
+fi
+
+echo "[*] Downloading sms_on_boot_combined.sh..."
+curl -fsSL "$REPO_RAW_BASE/sms_on_boot_combined.sh" -o /usr/bin/sms_on_boot_combined.sh
+chmod +x /usr/bin/sms_on_boot_combined.sh
+
+# Apply settings
+sed -i "s|^PHONE=\".*\"|PHONE=\"$PHONE\"|g" /usr/bin/sms_on_boot_combined.sh
+sed -i "s|^PREFER=\".*\"|PREFER=\"$PREFER\"|g" /usr/bin/sms_on_boot_combined.sh
+
+if [ -n "${TEXTBELT_KEY:-}" ]; then
+  sed -i "s|^TEXTBELT_KEY=\".*\"|TEXTBELT_KEY=\"$TEXTBELT_KEY\"|g" /usr/bin/sms_on_boot_combined.sh
 else
-  log "Trying sendsms first"
-  if send_sendsms; then
-    log "Sent via sendsms"
-    echo "$now" > "$STATE"
-    exit 0
-  fi
-  log "sendsms failed, trying Textbelt"
-  if send_textbelt; then
-    log "Sent via Textbelt"
-    echo "$now" > "$STATE"
-    exit 0
-  fi
+  sed -i "s|^TEXTBELT_KEY=\".*\"|TEXTBELT_KEY=\"\"|g" /usr/bin/sms_on_boot_combined.sh
 fi
 
-log "All providers failed"
-exit 1
+# ---- Patch installed boot script to prevent hangs + add curl timeouts (idempotent) ----
+
+# 1) Ensure Textbelt curl has timeouts (safe to run multiple times)
+# Replace: curl -sS -X POST
+# With:    curl -sS --connect-timeout 5 --max-time 15 -X POST
+sed -i 's/curl -sS -X POST/curl -sS --connect-timeout 5 --max-time 15 -X POST/g' /usr/bin/sms_on_boot_combined.sh
+
+# 2) Only wait for sms daemons if sendsms exists (prevents 120s delay on non-cellular models)
+# If the script already contains this guard, nothing breaks.
+if ! grep -q 'Only wait for SMS daemons if sendsms exists' /usr/bin/sms_on_boot_combined.sh 2>/dev/null; then
+  # Replace the original wait loop (first match) with guarded version.
+  # This assumes the script contains the exact original while-loop pattern.
+  # If it doesn't match, the script still works; this just avoids unnecessary delay.
+  sed -i '0,/^i=0$/{
+s/^i=0$/# Only wait for SMS daemons if sendsms exists (prevents delay on non-cellular models)\
+if command -v sendsms >/dev\/null 2>\&1; then\
+  i=0/
+}' /usr/bin/sms_on_boot_combined.sh
+
+  sed -i '0,/^done$/{
+s/^done$/done\
+fi/
+}' /usr/bin/sms_on_boot_combined.sh
+
+  # Add marker comment so we don't try to patch again
+  sed -i '1,40{s/^LOG="\/tmp\/sms_on_boot_combined\.log"$/LOG="\/tmp\/sms_on_boot_combined.log"\n# Only wait for SMS daemons if sendsms exists/}' /usr/bin/sms_on_boot_combined.sh
+fi
+
+# Create init.d service
+echo "[*] Creating init.d service..."
+cat > /etc/init.d/sms_on_boot_combined <<'EOF'
+#!/bin/sh /etc/rc.common
+START=99
+start() {
+  /usr/bin/sms_on_boot_combined.sh &
+}
+EOF
+
+chmod +x /etc/init.d/sms_on_boot_combined
+/etc/init.d/sms_on_boot_combined enable
+
+echo "[OK] Installed Combined version."
+echo "To test immediately (no reboot required):"
+echo "  rm -f /etc/sms_on_boot_combined.last"
+echo "  /usr/bin/sms_on_boot_combined.sh"
+echo "  cat /tmp/sms_on_boot_combined.log"
