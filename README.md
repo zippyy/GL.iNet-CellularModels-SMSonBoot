@@ -31,11 +31,11 @@ For the textbelt version replace `<YOURNUMBER>` and `<YOUR_TEXTBELT_KEY>`
 
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/techrelay/GL.iNet-CellularModels-SMSonBoot/main/install.sh)" -- <YOURNUMBER>
 
-**TextBelt Version** **This version is interactive and has no arguments**
+**TextBelt Version** 
 
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/techrelay/GL.iNet-CellularModels-SMSonBoot/main/install_textbelt.sh)" -- <YOURNUMBER> <YOUR_TEXTBELT_KEY>
 
-**Combined Version**
+**Combined Version** **This version is interactive and has no arguments**
 
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/techrelay/GL.iNet-CellularModels-SMSonBoot/main/install_combined.sh)"
 
