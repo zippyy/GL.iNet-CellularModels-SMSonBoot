@@ -39,3 +39,7 @@ sh -c "$(curl -fsSL https://raw.githubusercontent.com/techrelay/GL.iNet-Cellular
 
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/techrelay/GL.iNet-CellularModels-SMSonBoot/main/install_combined.sh)"
 
+
+![35BF6268-8DBB-4A14-99C2-8406653029FB_1_105_c](https://github.com/user-attachments/assets/41bc91a7-c82f-4833-94a1-89fc69ae90b9)
+
+
