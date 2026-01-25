@@ -2,6 +2,7 @@
 set -eu
 
 PHONE="${1:-}"
+REPO_RAW_BASE="https://raw.githubusercontent.com/techrelay/GL.iNet-CellularModels-SMSonBoot/main"
 
 if [ "$(id -u)" -ne 0 ]; then
   echo "Run as root." >&2
@@ -15,7 +16,7 @@ fi
 
 echo "[*] Downloading sms_on_boot.sh..."
 curl -fsSL \
-  https://raw.githubusercontent.com/zippyy/GL.iNet-CellularModels-SMSonBoot/main/sms_on_boot.sh \
+  "$REPO_RAW_BASE/sms_on_boot.sh" \
   -o /usr/bin/sms_on_boot.sh
 
 chmod +x /usr/bin/sms_on_boot.sh
