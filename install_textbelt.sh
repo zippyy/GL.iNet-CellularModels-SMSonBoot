@@ -3,6 +3,7 @@ set -eu
 
 PHONE="${1:-}"
 KEY="${2:-}"
+WEBHOOK_URL="${3:-}"
 REPO_RAW_BASE="https://raw.githubusercontent.com/techrelay/GL.iNet-CellularModels-SMSonBoot/main"
 
 if [ "$(id -u)" -ne 0 ]; then
@@ -11,8 +12,8 @@ if [ "$(id -u)" -ne 0 ]; then
 fi
 
 if [ -z "$PHONE" ] || [ -z "$KEY" ]; then
-  echo "Usage: install_textbelt.sh <PHONE> <TEXTBELT_KEY>" >&2
-  echo "Example: install_textbelt.sh +17192291657 your_key_here" >&2
+  echo "Usage: install_textbelt.sh <PHONE> <TEXTBELT_KEY> [WEBHOOK_URL]" >&2
+  echo "Example: install_textbelt.sh +17192291657 your_key_here https://example.com/webhook" >&2
   exit 1
 fi
 
@@ -31,6 +32,11 @@ chmod +x /usr/bin/sms_on_boot_textbelt.sh
 # Set PHONE + KEY inside the script (simple + obvious)
 sed -i "s|^PHONE=\".*\"|PHONE=\"$PHONE\"|g" /usr/bin/sms_on_boot_textbelt.sh
 sed -i "s|^TEXTBELT_KEY=\".*\"|TEXTBELT_KEY=\"$KEY\"|g" /usr/bin/sms_on_boot_textbelt.sh
+
+if [ -n "$WEBHOOK_URL" ]; then
+  sed -i "s|^WEBHOOK_URL=\".*\"|WEBHOOK_URL=\"$WEBHOOK_URL\"|g" /usr/bin/sms_on_boot_textbelt.sh
+  echo "[*] Set WEBHOOK_URL to: $WEBHOOK_URL"
+fi
 
 echo "[*] Creating init.d service..."
 cat > /etc/init.d/sms_on_boot_textbelt <<'EOF'

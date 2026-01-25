@@ -7,6 +7,7 @@ CONF="/etc/sms_on_boot_combined.conf"
 PREFER=""
 PHONE=""
 TEXTBELT_KEY=""
+WEBHOOK_URL=""
 
 usage() {
   cat <<'EOF'
@@ -16,11 +17,12 @@ Interactive:
   install_combined.sh
 
 Non-interactive:
-  install_combined.sh --prefer textbelt|sendsms --phone +17192291657 [--textbelt-key KEY]
+  install_combined.sh --prefer textbelt|sendsms --phone +17192291657 [--textbelt-key KEY] [--webhook-url URL]
 
 Examples:
   install_combined.sh --prefer textbelt --phone +17192291657 --textbelt-key textbelt
   install_combined.sh --prefer sendsms  --phone +17192291657
+  install_combined.sh --prefer textbelt --phone +17192291657 --textbelt-key textbelt --webhook-url https://example.com
 EOF
 }
 
@@ -31,6 +33,7 @@ while [ $# -gt 0 ]; do
     --prefer) PREFER="${2:-}"; shift 2 ;;
     --phone) PHONE="${2:-}"; shift 2 ;;
     --textbelt-key) TEXTBELT_KEY="${2:-}"; shift 2 ;;
+    --webhook-url) WEBHOOK_URL="${2:-}"; shift 2 ;;
     --) shift; break ;;
     *) echo "Unknown arg: $1" >&2; usage; exit 1 ;;
   esac
@@ -71,6 +74,10 @@ if [ -z "${PREFER:-}" ] || [ -z "${PHONE:-}" ]; then
   echo "You can also use: textbelt (limited free tier)"
   printf "Textbelt key: "
   read TEXTBELT_KEY
+
+  echo "Webhook URL (optional). Leave blank to skip."
+  printf "Webhook URL: "
+  read WEBHOOK_URL
 fi
 
 # Validate
@@ -95,6 +102,7 @@ umask 077
   echo "PHONE=\"$PHONE\""
   echo "PREFER=\"$PREFER\""
   echo "TEXTBELT_KEY=\"$TEXTBELT_KEY\""
+  echo "WEBHOOK_URL=\"$WEBHOOK_URL\""
 } > "$CONF"
 
 echo "[*] Creating init.d service..."
