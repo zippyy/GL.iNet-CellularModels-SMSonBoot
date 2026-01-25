@@ -13,6 +13,7 @@ This project targets **GL.iNet / OpenWrt firmware** that includes the built-in `
 - 🌐 Automatically detects the active cellular WAN interface
 - 🕒 Built-in cooldown to prevent SMS spam
 - 🛠 Uses GL.iNet’s native `sendsms` backend (same path as the web UI)
+- 🔔 Optional webhook POST with JSON payload on boot
 ---
 
 ## ✅ Prerequisites
@@ -35,10 +36,14 @@ For the textbelt version replace `<YOURNUMBER>` and `<YOUR_TEXTBELT_KEY>`
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/techrelay/GL.iNet-CellularModels-SMSonBoot/main/install.sh)" -- <YOURNUMBER>
 
 # Textbelt Version
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/techrelay/GL.iNet-CellularModels-SMSonBoot/main/install_textbelt.sh)" -- <YOURNUMBER> <YOUR_TEXTBELT_KEY>
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/techrelay/GL.iNet-CellularModels-SMSonBoot/main/install_textbelt.sh)" -- <YOURNUMBER> <YOUR_TEXTBELT_KEY> [WEBHOOK_URL]
 
 # Combined Version (interactive, no arguments)
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/techrelay/GL.iNet-CellularModels-SMSonBoot/main/install_combined.sh)"
+
+# Combined Version (non-interactive with webhook)
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/techrelay/GL.iNet-CellularModels-SMSonBoot/main/install_combined.sh)" -- \
+  --prefer textbelt --phone <YOURNUMBER> --textbelt-key <YOUR_TEXTBELT_KEY> --webhook-url <WEBHOOK_URL>
 ```
 
   ![35BF6268-8DBB-4A14-99C2-8406653029FB_1_105_c](https://github.com/user-attachments/assets/0372f6cc-ef24-485f-a133-c45d68f73a19)
@@ -50,7 +55,8 @@ sh -c "$(curl -fsSL https://raw.githubusercontent.com/techrelay/GL.iNet-Cellular
 ### Option A: sendsms (Cellular SIM)
 1. Copy `sms_on_boot.sh` to `/usr/bin/sms_on_boot.sh`
 2. Edit the `PHONE` value inside the script.
-3. Create an init script:
+3. Optional: set `WEBHOOK_URL` to receive a JSON payload.
+4. Create an init script:
    ```sh
    cat > /etc/init.d/sms_on_boot <<'EOF'
    #!/bin/sh /etc/rc.common
@@ -66,7 +72,8 @@ sh -c "$(curl -fsSL https://raw.githubusercontent.com/techrelay/GL.iNet-Cellular
 ### Option B: Textbelt
 1. Copy `sms_on_boot_textbelt.sh` to `/usr/bin/sms_on_boot_textbelt.sh`
 2. Edit `PHONE` and `TEXTBELT_KEY` inside the script.
-3. Create an init script:
+3. Optional: set `WEBHOOK_URL` to receive a JSON payload.
+4. Create an init script:
    ```sh
    cat > /etc/init.d/sms_on_boot_textbelt <<'EOF'
    #!/bin/sh /etc/rc.common
@@ -87,6 +94,7 @@ sh -c "$(curl -fsSL https://raw.githubusercontent.com/techrelay/GL.iNet-Cellular
    PHONE="+17192291657"
    PREFER="textbelt" # or sendsms
    TEXTBELT_KEY="textbelt"
+   WEBHOOK_URL=""
    EOF
    chmod 600 /etc/sms_on_boot_combined.conf
    ```
@@ -108,6 +116,7 @@ sh -c "$(curl -fsSL https://raw.githubusercontent.com/techrelay/GL.iNet-Cellular
 ## 🔧 Configuration & Logs
 
 - **Cooldown:** Each script has a `COOLDOWN` setting (default 300s) to prevent SMS spam.
+- **Webhook:** Set `WEBHOOK_URL` to POST a JSON payload on boot (uses curl, logs response code/body).
 - **Logs:**
   - `/tmp/sms_on_boot.log`
   - `/tmp/sms_on_boot_textbelt.log`

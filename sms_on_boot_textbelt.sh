@@ -5,8 +5,15 @@ COOLDOWN=300   # seconds (5 min)
 
 PHONE="+11234567890"        # change if needed
 TEXTBELT_KEY="textbelt"     # set your key here
+WEBHOOK_URL=""              # optional: POST JSON payload to this URL
+WEBHOOK_CONNECT_TIMEOUT=5
+WEBHOOK_TIMEOUT=15
 
 log() { echo "[$(date '+%F %T')] $*" >> "$LOG"; }
+
+json_escape() {
+  printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e ':a;N;$!ba;s/\n/\\n/g'
+}
 
 # Find active WAN interface (best-effort)
 find_wan_iface() {
@@ -63,6 +70,41 @@ Time: $(date '+%F %T %Z')"
 WAN IF: $WAN_IFACE"
 [ -n "$WAN_IP" ] && MSG="$MSG
 WAN IP: $WAN_IP"
+
+send_webhook() {
+  [ -z "$WEBHOOK_URL" ] && return 0
+  if ! command -v curl >/dev/null 2>&1; then
+    log "Webhook: curl not found"
+    return 1
+  fi
+
+  payload="$(printf '{"event":"boot","time":"%s","wan_iface":"%s","wan_ip":"%s","message":"%s"}' \
+    "$(date '+%F %T %Z')" \
+    "$(json_escape "${WAN_IFACE:-}")" \
+    "$(json_escape "${WAN_IP:-}")" \
+    "$(json_escape "$MSG")")"
+
+  resp="$(curl -sS --connect-timeout "$WEBHOOK_CONNECT_TIMEOUT" --max-time "$WEBHOOK_TIMEOUT" \
+    -H "Content-Type: application/json" -d "$payload" -w '\n%{http_code}' \
+    "$WEBHOOK_URL" 2>>"$LOG" || true)"
+
+  body="$(printf '%s' "$resp" | sed '$d')"
+  code="$(printf '%s' "$resp" | tail -n 1)"
+
+  [ -n "$body" ] && log "Webhook response body: $body"
+  [ -n "$code" ] && log "Webhook response code: $code"
+
+  case "$code" in
+    2*|3*) return 0 ;;
+  esac
+  return 1
+}
+
+if send_webhook; then
+  log "Webhook sent."
+else
+  log "Webhook failed."
+fi
 
 log "Sending via Textbelt to $PHONE"
 
