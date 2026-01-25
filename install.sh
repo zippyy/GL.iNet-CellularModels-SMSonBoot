@@ -2,6 +2,7 @@
 set -eu
 
 PHONE="${1:-}"
+WEBHOOK_URL="${2:-}"
 REPO_RAW_BASE="https://raw.githubusercontent.com/techrelay/GL.iNet-CellularModels-SMSonBoot/main"
 
 if [ "$(id -u)" -ne 0 ]; then
@@ -26,6 +27,11 @@ if [ -n "$PHONE" ]; then
   echo "[*] Set PHONE to: $PHONE"
 else
   echo "[!] No phone provided. Edit /usr/bin/sms_on_boot.sh later."
+fi
+
+if [ -n "$WEBHOOK_URL" ]; then
+  sed -i "s|^WEBHOOK_URL=\".*\"|WEBHOOK_URL=\"$WEBHOOK_URL\"|g" /usr/bin/sms_on_boot.sh
+  echo "[*] Set WEBHOOK_URL to: $WEBHOOK_URL"
 fi
 
 echo "[*] Creating init.d service..."
